@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Get full git history for checking file changes
+          fetch-depth: 0
 
       - name: Get previous tag
         id: previoustag
@@ -22,31 +22,26 @@ jobs:
         continue-on-error: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install Dependencies
         run: |
-          # pnpm install --frozen-lockfile
-          # 设置 npm 配置忽略 peer dependency 冲突
           echo "strict-peer-dependencies=false" >> .npmrc
-          
-          # 先按 lockfile 安装
           pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
-          
-          # 强制安装 wrangler v3，覆盖 package.json 中的 v4
-          pnpm add -D wrangler@^3.99.0 --force
-          
-          # 验证版本
+
+          echo "Node version:"
+          node -v
+
           echo "Wrangler version:"
-          npx wrangler --version
+          pnpm exec wrangler --version || npx wrangler --version
 
       - name: Run deploy script
         env:
@@ -65,8 +60,8 @@ jobs:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
         run: pnpm dlx tsx scripts/deploy/index.ts
 
-      # Clean up
       - name: Post deployment cleanup
+        if: always()
         run: |
-          rm -f .env*.*
-          rm -f wrangler*.json
+          rm -f .env*.* || true
+          rm -f wrangler*.json || true
